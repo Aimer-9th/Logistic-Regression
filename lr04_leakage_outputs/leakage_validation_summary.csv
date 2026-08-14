@@ -1,0 +1,11 @@
+﻿item,value
+raw_model_feature_count,47
+available_feature_count,27
+conditional_feature_count,20
+leakage_feature_count,0
+official_asof_feature_count,19
+explicit_blacklist,control_success
+removed_from_test_feature_set,
+final_model_feature_count,47
+expected_model_feature_count,47
+feature_count_valid,True

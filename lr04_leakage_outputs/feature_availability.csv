@@ -1,0 +1,48 @@
+﻿feature,availability,reason,condition
+season,available,현재 투구가 속한 시즌 정보,
+game_month,available,현재 경기의 월 정보,
+game_dayofweek,available,현재 경기의 요일 정보,
+inning,available,현재 투구 직전 이닝 정보,
+top_bottom,available,현재 투구 직전 초/말 정보,
+game_type,available,현재 경기 유형,
+balls_before,available,현재 투구 직전 볼 카운트,
+strikes_before,available,현재 투구 직전 스트라이크 카운트,
+outs_before,available,현재 투구 직전 아웃 카운트,
+run_top_before,available,현재 투구 직전 초 공격 팀 점수,
+run_bot_before,available,현재 투구 직전 말 공격 팀 점수,
+run_total_before,available,현재 투구 직전 양 팀 합산 점수,
+score_diff_home,available,현재 투구 직전 홈 팀 기준 점수 차,
+score_diff_pitcher_team,available,현재 투구 직전 투수 팀 기준 점수 차,
+runner_on_1b,available,현재 투구 직전 1루 주자 상태,
+runner_on_2b,available,현재 투구 직전 2루 주자 상태,
+runner_on_3b,available,현재 투구 직전 3루 주자 상태,
+num_runners_on,available,현재 투구 직전 주자 수,
+base_state,available,현재 투구 직전 주자 상황,
+home_win_expectancy,available,현재 투구 직전 상황 기준 홈 팀 기대 승률,
+away_win_expectancy,available,현재 투구 직전 상황 기준 원정 팀 기대 승률,
+li,available,현재 투구 직전 상황 중요도,
+pitcher_id,conditional,예측 시점에 확인 가능한 투수 ID,2025 Unknown Pitcher가 존재하므로 unknown category 처리 및 별도 validation 필요
+batter_id,available,현재 투구 상대 타자 ID,
+pitcher_hand,available,현재 투수 좌우 유형,
+batter_hand,available,현재 타자 좌우 유형,
+pitcher_team_id,available,현재 투수 소속 팀,
+batter_team_id,available,현재 타자 소속 팀,
+asof_pitcher_n,conditional,현재 투구 직전까지의 공식 투수 누적 투구 수,운영 측 제공 past-only 값을 그대로 사용
+asof_pitcher_success_rate,conditional,현재 투구 직전까지의 공식 투수 제구 성공률,현재 행 target을 포함해 재계산하지 않음
+asof_pitcher_reverse_rate,conditional,현재 투구 직전까지의 공식 과거 통계,운영 측 제공 past-only 값을 그대로 사용
+asof_pitcher_middle_rate,conditional,현재 투구 직전까지의 공식 과거 통계,운영 측 제공 past-only 값을 그대로 사용
+asof_pitcher_ball_rate,conditional,현재 투구 직전까지의 공식 과거 통계,운영 측 제공 past-only 값을 그대로 사용
+asof_pitcher_strike_rate,conditional,현재 투구 직전까지의 공식 과거 통계,운영 측 제공 past-only 값을 그대로 사용
+asof_pitcher_prev1_game_success_rate,conditional,현재 경기 이전 1경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_pitcher_prev3_game_success_rate,conditional,현재 경기 이전 3경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_pitcher_prev5_game_success_rate,conditional,현재 경기 이전 5경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_pitcher_prev1_game_middle_rate,conditional,현재 경기 이전 1경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_pitcher_prev3_game_middle_rate,conditional,현재 경기 이전 3경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_pitcher_prev5_game_middle_rate,conditional,현재 경기 이전 5경기 기준 공식 과거 통계,현재 경기 결과를 포함하지 않아야 함
+asof_batter_n,conditional,현재 투구 직전까지의 공식 타자 과거 표본 수,운영 측 제공 past-only 값을 그대로 사용
+asof_batter_success_rate,conditional,현재 투구 직전까지의 공식 타자 과거 통계,현재 행 target을 포함해 재계산하지 않음
+asof_batter_middle_rate,conditional,현재 투구 직전까지의 공식 타자 과거 통계,현재 행 정보를 포함해 재계산하지 않음
+asof_pitcher_pitchmix_n,conditional,현재 투구 직전까지의 공식 구종 이력 표본 수,현재 투구의 실제 구종을 포함하지 않음
+asof_pitcher_fastball_rate,conditional,현재 투구 직전까지의 공식 과거 구종 사용률,현재 투구의 실제 구종을 포함하지 않음
+asof_pitcher_breaking_rate,conditional,현재 투구 직전까지의 공식 과거 구종 사용률,현재 투구의 실제 구종을 포함하지 않음
+asof_pitcher_offspeed_rate,conditional,현재 투구 직전까지의 공식 과거 구종 사용률,현재 투구의 실제 구종을 포함하지 않음
