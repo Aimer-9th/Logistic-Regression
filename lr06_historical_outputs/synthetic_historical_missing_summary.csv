@@ -1,0 +1,15 @@
+﻿feature,missing_count,missing_rate
+hist_pitcher_by_balls_before_success_rate,4,0.6666666666666666
+hist_pitcher_season_success_rate,3,0.5
+hist_pitcher_last10_success_rate,2,0.3333333333333333
+hist_pitcher_last20_success_rate,2,0.3333333333333333
+hist_pitcher_prev1_success,2,0.3333333333333333
+hist_pitcher_last5_success_rate,2,0.3333333333333333
+hist_pitcher_last50_success_rate,2,0.3333333333333333
+hist_pitcher_last10_count,0,0.0
+hist_pitcher_pitch_count,0,0.0
+hist_pitcher_last5_count,0,0.0
+hist_pitcher_last50_count,0,0.0
+hist_pitcher_last20_count,0,0.0
+hist_pitcher_season_pitch_count,0,0.0
+hist_pitcher_by_balls_before_count,0,0.0
