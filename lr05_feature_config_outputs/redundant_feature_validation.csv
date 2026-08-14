@@ -1,0 +1,5 @@
+﻿feature,compared_with,relation,validated,reason
+asof_pitcher_pitchmix_n,asof_pitcher_n,exact equality,True,투수 누적 투구 수와 pitch-mix 표본 수가 동일한지 검증
+run_total_before,run_top_before + run_bot_before,exact deterministic sum,True,두 팀 점수의 단순 합
+num_runners_on,runner_on_1b + runner_on_2b + runner_on_3b,exact deterministic sum,True,세 base indicator의 단순 합
+away_win_expectancy,100 - home_win_expectancy,deterministic complement,False,home / away 기대승률이 상호 보완 관계인지 검증

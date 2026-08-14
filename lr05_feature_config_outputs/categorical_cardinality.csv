@@ -1,0 +1,11 @@
+﻿feature,type,nunique,unique_ratio,high_cardinality
+batter_id,categorical,830,0.0005626767686354478,True
+pitcher_id,identifier,792,0.0005369156635653912,True
+pitcher_team_id,categorical,13,8.813009629229905e-06,False
+batter_team_id,categorical,13,8.813009629229905e-06,False
+base_state,categorical,8,5.423390541064557e-06,False
+game_dayofweek,categorical,7,4.745466723431487e-06,False
+top_bottom,categorical,2,1.3558476352661393e-06,False
+game_type,categorical,2,1.3558476352661393e-06,False
+pitcher_hand,categorical,2,1.3558476352661393e-06,False
+batter_hand,categorical,2,1.3558476352661393e-06,False
