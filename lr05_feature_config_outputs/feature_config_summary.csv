@@ -1,0 +1,14 @@
+﻿item,value
+total_feature_count,47
+numeric_count,37
+categorical_count,9
+ordinal_count,0
+identifier_count,1
+scale_count,27
+no_scale_count,10
+high_cardinality_count,2
+constant_count,0
+near_constant_count,0
+full_feature_count,47
+reduced_feature_count,44
+reduced_drop_count,3
