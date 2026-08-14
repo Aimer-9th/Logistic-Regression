@@ -1,0 +1,6 @@
+﻿item,value
+train_column_count,49
+test_column_count,48
+train_only,control_success
+test_only,
+schema_valid,True

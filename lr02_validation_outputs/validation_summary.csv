@@ -1,0 +1,17 @@
+﻿item,value
+target_binary,True
+target_missing_count,0
+target_positive_rate,0.5237659752747625
+full_duplicate_count,0
+row_id_duplicate_count,0
+schema_valid,True
+dtype_mismatch_count,0
+missing_feature_count_train,16
+missing_feature_count_test,16
+train_pitcher_count,792
+test_pitcher_count,4
+known_pitcher_count,2
+unknown_pitcher_count,2
+unknown_pitcher_row_count,3
+unknown_pitcher_row_rate,0.6
+pitcher_overlap_rate,0.5

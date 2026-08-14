@@ -1,0 +1,3 @@
+﻿pitcher_status,rows,mean_nan_count,median_nan_count,rows_with_nan,rows_with_nan_rate
+Known,2,1.0,1.0,1,0.5
+Unknown,3,9.333333333333334,8.0,3,1.0
