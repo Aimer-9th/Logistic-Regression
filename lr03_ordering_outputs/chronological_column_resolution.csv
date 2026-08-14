@@ -1,0 +1,7 @@
+﻿level,resolved_column,exists
+season,season,True
+game_date,,False
+game_id,,False
+inning,inning,True
+plate_appearance,,False
+pitch_order,,False

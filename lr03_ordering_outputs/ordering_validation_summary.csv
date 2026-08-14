@@ -1,0 +1,10 @@
+﻿item,value
+complete_chronological_key,False
+missing_key_levels,"game_date, game_id, plate_appearance, pitch_order"
+resolved_sorting_key,
+game_date_valid,False
+duplicate_ordering_rows,
+sorting_status,BLOCKED
+mapping_preserved,False
+season_order_valid,False
+past_future_separable,False
