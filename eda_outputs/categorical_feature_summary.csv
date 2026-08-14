@@ -1,0 +1,11 @@
+﻿,nunique,missing_count,missing_rate
+batter_id,830,0,0.0
+pitcher_id,792,0,0.0
+pitcher_team_id,13,0,0.0
+batter_team_id,13,0,0.0
+base_state,8,0,0.0
+game_dayofweek,7,0,0.0
+top_bottom,2,0,0.0
+game_type,2,0,0.0
+batter_hand,2,0,0.0
+pitcher_hand,2,0,0.0
