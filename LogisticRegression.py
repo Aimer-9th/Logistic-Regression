@@ -1,23 +1,9 @@
 import os
-import time
 import warnings
 
 import numpy as np
 import pandas as pd
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    brier_score_loss,
-    log_loss,
-    roc_auc_score,
-)
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import (
-    OneHotEncoder,
-    StandardScaler,
-)
+import matplotlib.pyplot as plt
 
 
 # =============================================================================
@@ -27,18 +13,16 @@ from sklearn.preprocessing import (
 warnings.filterwarnings("ignore")
 
 DATA_DIR = "/content/drive/MyDrive/𝟐𝟎𝟐𝟔/aimers/9기/open/data"
+OUTPUT_DIR = "./eda_outputs"
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 ID = "row_id"
 TARGET = "control_success"
+SEASON_COL = "season"
 PITCHER_ID_COL = "pitcher_id"
 
-TRAIN_END_SEASON = 2023
-VALID_SEASON = 2024
-
-RANDOM_STATE = 42
-
-LR_C = 1.0
-LR_MAX_ITER = 500
+SEASONS = list(range(2019, 2025))
 
 
 # =============================================================================
@@ -64,24 +48,10 @@ train = pd.read_csv(
 )
 
 
-print("=" * 80)
-print("1. DATA")
-print("=" * 80)
-
-print(f"Train shape   : {train.shape}")
-print(f"Feature count : {len(FEATURES)}")
-print(
-    f"Season        : "
-    f"{train['season'].min()} ~ {train['season'].max()}"
-)
-print(
-    f"Target rate   : "
-    f"{train[TARGET].mean():.4f}"
-)
-
-
 # =============================================================================
 # 2. Feature Type 정의
+#
+# 참고 코드의 정의를 그대로 사용
 # =============================================================================
 
 CAT_COLS = [
@@ -159,6 +129,22 @@ NUM_COLS = [
 ]
 
 
+# 주요 numeric feature
+# 전체 numeric feature 통계는 별도로 저장하고,
+# 시각화는 해석 가치가 높은 핵심 feature에 집중
+KEY_NUMERIC_COLS = [
+    "inning",
+    "score_diff_pitcher_team",
+    "home_win_expectancy",
+    "li",
+    "asof_pitcher_n",
+    "asof_pitcher_success_rate",
+    "asof_pitcher_prev1_game_success_rate",
+    "asof_pitcher_prev3_game_success_rate",
+    "asof_pitcher_prev5_game_success_rate",
+]
+
+
 # =============================================================================
 # 3. Feature Type 검증
 # =============================================================================
@@ -167,998 +153,1103 @@ assert set(CAT_COLS).isdisjoint(set(NUM_COLS)), (
     "CAT_COLS와 NUM_COLS에 중복 컬럼이 있습니다."
 )
 
-assert (
-    set(CAT_COLS) | set(NUM_COLS)
-) == set(FEATURES), (
-    "모든 feature가 CAT/NUM 중 하나에 정확히 포함되어야 합니다."
+assert set(CAT_COLS) | set(NUM_COLS) == set(FEATURES), (
+    "모든 feature가 CAT_COLS 또는 NUM_COLS에 정확히 포함되어야 합니다."
+)
+
+assert set(train[TARGET].dropna().unique()).issubset({0, 1}), (
+    f"{TARGET}은 binary target이어야 합니다."
 )
 
 
-print("\n" + "=" * 80)
-print("2. FEATURE TYPE")
+# =============================================================================
+# 4. 전체 데이터 구조 확인
+# =============================================================================
+
+print("=" * 80)
+print("1. DATA OVERVIEW")
 print("=" * 80)
 
-print(f"Total       : {len(FEATURES)}")
-print(f"Categorical : {len(CAT_COLS)}")
-print(f"Numeric     : {len(NUM_COLS)}")
+print(f"Rows           : {train.shape[0]:,}")
+print(f"Columns        : {train.shape[1]:,}")
+print(f"Feature count  : {len(FEATURES):,}")
+print(f"Categorical    : {len(CAT_COLS):,}")
+print(f"Numeric        : {len(NUM_COLS):,}")
+print(
+    f"Season range   : "
+    f"{train[SEASON_COL].min()} ~ {train[SEASON_COL].max()}"
+)
+print(f"Pitchers       : {train[PITCHER_ID_COL].nunique():,}")
+print(f"Target rate    : {train[TARGET].mean():.4f}")
 
 
 # =============================================================================
-# 4. 명백한 중복 Feature 정의
+# 5. 시즌별 데이터 수 / Target Rate
 # =============================================================================
 
-DROP_REDUNDANT_COLS = [
-    # asof_pitcher_n과 완전히 동일
-    "asof_pitcher_pitchmix_n",
+season_summary = (
+    train
+    .groupby(SEASON_COL)[TARGET]
+    .agg(
+        rows="size",
+        control_success_count="sum",
+        control_success_rate="mean",
+    )
+    .reindex(SEASONS)
+)
 
-    # run_top_before + run_bot_before
-    "run_total_before",
-
-    # runner_on_1b + runner_on_2b + runner_on_3b
-    "num_runners_on",
-
-    # home_win_expectancy와 사실상 동일 정보
-    "away_win_expectancy",
-]
-
+season_summary["row_ratio"] = (
+    season_summary["rows"] / len(train)
+)
 
 print("\n" + "=" * 80)
-print("3. REDUNDANT FEATURES")
+print("2. SEASON SUMMARY")
 print("=" * 80)
+print(season_summary.round(4).to_string())
 
-for col in DROP_REDUNDANT_COLS:
-    print(f"- {col}")
+season_summary.to_csv(
+    os.path.join(OUTPUT_DIR, "season_summary.csv"),
+    encoding="utf-8-sig",
+)
 
 
 # =============================================================================
-# 5. 4개 Logistic Regression 실험군 정의
+# 6. 전체 Target Distribution
 # =============================================================================
 
-FEATURES_FULL_PID = FEATURES.copy()
+target_summary = (
+    train[TARGET]
+    .value_counts(dropna=False)
+    .sort_index()
+    .rename("count")
+    .to_frame()
+)
 
-FEATURES_FULL_NO_PID = [
-    col
-    for col in FEATURES
-    if col != PITCHER_ID_COL
-]
-
-FEATURES_REDUCED_PID = [
-    col
-    for col in FEATURES
-    if col not in DROP_REDUNDANT_COLS
-]
-
-FEATURES_REDUCED_NO_PID = [
-    col
-    for col in FEATURES
-    if (
-        col not in DROP_REDUNDANT_COLS
-        and col != PITCHER_ID_COL
-    )
-]
-
-
-LR_EXPERIMENTS = {
-    "LR-Full-PID": {
-        "features": FEATURES_FULL_PID,
-        "use_pitcher_id": True,
-        "reduced": False,
-    },
-
-    "LR-Full-NoPID": {
-        "features": FEATURES_FULL_NO_PID,
-        "use_pitcher_id": False,
-        "reduced": False,
-    },
-
-    "LR-Reduced-PID": {
-        "features": FEATURES_REDUCED_PID,
-        "use_pitcher_id": True,
-        "reduced": True,
-    },
-
-    "LR-Reduced-NoPID": {
-        "features": FEATURES_REDUCED_NO_PID,
-        "use_pitcher_id": False,
-        "reduced": True,
-    },
-}
-
+target_summary["ratio"] = (
+    target_summary["count"] / len(train)
+)
 
 print("\n" + "=" * 80)
-print("4. EXPERIMENTS")
+print("3. TARGET DISTRIBUTION")
 print("=" * 80)
+print(target_summary.round(4).to_string())
 
-for name, config in LR_EXPERIMENTS.items():
-    print(
-        f"{name:<20} | "
-        f"features={len(config['features']):>2} | "
-        f"PID={str(config['use_pitcher_id']):<5} | "
-        f"Reduced={config['reduced']}"
+target_summary.to_csv(
+    os.path.join(OUTPUT_DIR, "target_distribution.csv"),
+    encoding="utf-8-sig",
+)
+
+
+# Target distribution plot
+fig, ax = plt.subplots(figsize=(6, 4))
+
+target_counts = (
+    train[TARGET]
+    .value_counts()
+    .sort_index()
+)
+
+ax.bar(
+    target_counts.index.astype(str),
+    target_counts.values,
+)
+
+ax.set_title("Control Success Distribution")
+ax.set_xlabel("control_success")
+ax.set_ylabel("Count")
+
+for i, value in enumerate(target_counts.values):
+    ax.text(
+        i,
+        value,
+        f"{value:,}",
+        ha="center",
+        va="bottom",
     )
+
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        OUTPUT_DIR,
+        "target_distribution.png",
+    ),
+    dpi=150,
+    bbox_inches="tight",
+)
+plt.show()
 
 
 # =============================================================================
-# 6. 실험별 Feature Type 반환 함수
+# 7. 시즌별 Target Rate 시각화
 # =============================================================================
 
-def get_feature_types(feature_list):
-    """
-    실험에 사용되는 feature 목록에 맞춰
-    categorical / numeric column 목록을 생성한다.
-    """
+fig, ax = plt.subplots(figsize=(8, 4))
 
-    cat_cols = [
-        col
-        for col in CAT_COLS
-        if col in feature_list
-    ]
+ax.plot(
+    season_summary.index,
+    season_summary["control_success_rate"],
+    marker="o",
+)
 
-    num_cols = [
-        col
-        for col in NUM_COLS
-        if col in feature_list
-    ]
+ax.set_title("Control Success Rate by Season")
+ax.set_xlabel("Season")
+ax.set_ylabel("Control Success Rate")
+ax.set_xticks(SEASONS)
 
-    assert (
-        len(cat_cols) + len(num_cols)
-        == len(feature_list)
-    )
-
-    return cat_cols, num_cols
-
-
-# =============================================================================
-# 7. Logistic Regression Pipeline
-# =============================================================================
-
-def build_lr_pipeline(
-    cat_cols,
-    num_cols,
-    C=1.0,
-    max_iter=500,
-):
-    """
-    Logistic Regression Pipeline
-
-    Categorical
-        -> Most Frequent Imputation
-        -> OneHotEncoder
-
-    Numeric
-        -> Median Imputation
-        -> Missing Indicator
-        -> StandardScaler
-
-    Model
-        -> L2 Logistic Regression
-    """
-
-    categorical_pipeline = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(
-                    strategy="most_frequent",
-                ),
-            ),
-            (
-                "onehot",
-                OneHotEncoder(
-                    handle_unknown="ignore",
-                    sparse_output=True,
-                ),
-            ),
-        ]
-    )
-
-    numeric_pipeline = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(
-                    strategy="median",
-                    add_indicator=True,
-                ),
-            ),
-            (
-                "scaler",
-                StandardScaler(),
-            ),
-        ]
-    )
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            (
-                "categorical",
-                categorical_pipeline,
-                cat_cols,
-            ),
-            (
-                "numeric",
-                numeric_pipeline,
-                num_cols,
-            ),
-        ],
-        remainder="drop",
-    )
-
-    model = LogisticRegression(
-        C=C,
-        penalty="l2",
-        solver="saga",
-        max_iter=max_iter,
-        n_jobs=-1,
-        random_state=RANDOM_STATE,
-
-        # solver 내부 로그는 끔.
-        # 대신 아래 학습 루프에서 깔끔한 로그를 출력함.
-        verbose=0,
-    )
-
-    return Pipeline(
-        steps=[
-            (
-                "preprocessor",
-                preprocessor,
-            ),
-            (
-                "model",
-                model,
-            ),
-        ]
-    )
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        OUTPUT_DIR,
+        "season_target_rate.png",
+    ),
+    dpi=150,
+    bbox_inches="tight",
+)
+plt.show()
 
 
 # =============================================================================
-# 8. Time-based Validation Split
-#
-# Train : 2019 ~ 2023
-# Valid : 2024
+# 8. Pitcher별 투구 수 분포
 # =============================================================================
 
-train_mask = (
-    train["season"]
-    <= TRAIN_END_SEASON
-)
-
-valid_mask = (
-    train["season"]
-    == VALID_SEASON
-)
-
-
-train_fold = (
-    train.loc[train_mask]
-    .reset_index(drop=True)
-)
-
-valid_fold = (
-    train.loc[valid_mask]
-    .reset_index(drop=True)
-)
-
-
-print("\n" + "=" * 80)
-print("5. VALIDATION SPLIT")
-print("=" * 80)
-
-print(
-    "Train seasons :",
-    sorted(train_fold["season"].unique()),
-)
-
-print(
-    "Valid seasons :",
-    sorted(valid_fold["season"].unique()),
-)
-
-print(
-    f"Train rows     : {len(train_fold):,}"
-)
-
-print(
-    f"Valid rows     : {len(valid_fold):,}"
-)
-
-print(
-    f"Train rate     : {train_fold[TARGET].mean():.4f}"
-)
-
-print(
-    f"Valid rate     : {valid_fold[TARGET].mean():.4f}"
-)
-
-
-# =============================================================================
-# 9. Known / Unknown Pitcher 정의
-# =============================================================================
-
-train_pitchers = set(
-    train_fold[PITCHER_ID_COL]
-    .dropna()
-    .unique()
-)
-
-
-known_mask = (
-    valid_fold[PITCHER_ID_COL]
-    .isin(train_pitchers)
-)
-
-unknown_mask = (
-    ~valid_fold[PITCHER_ID_COL]
-    .isin(train_pitchers)
-)
-
-
-print("\n" + "=" * 80)
-print("6. KNOWN / UNKNOWN PITCHER")
-print("=" * 80)
-
-print(
-    f"Known rows      : "
-    f"{known_mask.sum():,} "
-    f"({known_mask.mean():.2%})"
-)
-
-print(
-    f"Unknown rows    : "
-    f"{unknown_mask.sum():,} "
-    f"({unknown_mask.mean():.2%})"
-)
-
-print(
-    f"Known pitchers  : "
-    f"{valid_fold.loc[known_mask, PITCHER_ID_COL].nunique():,}"
-)
-
-print(
-    f"Unknown pitchers: "
-    f"{valid_fold.loc[unknown_mask, PITCHER_ID_COL].nunique():,}"
-)
-
-
-# =============================================================================
-# 10. 평가 함수
-# =============================================================================
-
-def evaluate_predictions(y_true, y_prob):
-    """
-    확률 예측 성능 평가.
-
-    Primary
-        Brier Score
-
-    Secondary
-        Log Loss
-        ROC-AUC
-    """
-
-    if len(y_true) == 0:
-        return {
-            "brier": np.nan,
-            "logloss": np.nan,
-            "auc": np.nan,
-        }
-
-    result = {
-        "brier": brier_score_loss(
-            y_true,
-            y_prob,
-        ),
-
-        "logloss": log_loss(
-            y_true,
-            y_prob,
-        ),
-    }
-
-    if len(np.unique(y_true)) == 2:
-        result["auc"] = roc_auc_score(
-            y_true,
-            y_prob,
-        )
-    else:
-        result["auc"] = np.nan
-
-    return result
-
-
-# =============================================================================
-# 11. 모델 학습
-# =============================================================================
-
-results = []
-trained_models = {}
-
-
-print("\n" + "=" * 80)
-print("7. MODEL TRAINING START")
-print("=" * 80)
-
-
-for experiment_index, (experiment_name, config) in enumerate(
-    LR_EXPERIMENTS.items(),
-    start=1,
-):
-
-    total_start = time.time()
-
-    print("\n" + "#" * 80)
-    print(
-        f"[{experiment_index}/{len(LR_EXPERIMENTS)}] "
-        f"{experiment_name}"
+pitcher_summary = (
+    train
+    .groupby(PITCHER_ID_COL)[TARGET]
+    .agg(
+        pitch_count="size",
+        success_count="sum",
+        success_rate="mean",
     )
-    print("#" * 80)
-
-
-    # -------------------------------------------------------------------------
-    # Feature 설정
-    # -------------------------------------------------------------------------
-
-    feature_list = config["features"]
-
-    cat_cols, num_cols = get_feature_types(
-        feature_list
-    )
-
-    print(
-        f"Features        : {len(feature_list)}"
-    )
-    print(
-        f"Categorical     : {len(cat_cols)}"
-    )
-    print(
-        f"Numeric         : {len(num_cols)}"
-    )
-    print(
-        f"Pitcher ID      : {config['use_pitcher_id']}"
-    )
-    print(
-        f"Reduced         : {config['reduced']}"
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 데이터 생성
-    # -------------------------------------------------------------------------
-
-    X_train = train_fold[
-        feature_list
-    ]
-
-    y_train = train_fold[
-        TARGET
-    ]
-
-    X_valid = valid_fold[
-        feature_list
-    ]
-
-    y_valid = valid_fold[
-        TARGET
-    ]
-
-
-    print(
-        f"Train rows      : {len(X_train):,}"
-    )
-    print(
-        f"Valid rows      : {len(X_valid):,}"
-    )
-
-
-    # -------------------------------------------------------------------------
-    # Pipeline 생성
-    # -------------------------------------------------------------------------
-
-    pipeline = build_lr_pipeline(
-        cat_cols=cat_cols,
-        num_cols=num_cols,
-        C=LR_C,
-        max_iter=LR_MAX_ITER,
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 학습
-    # -------------------------------------------------------------------------
-
-    print(
-        f"\n[{experiment_name}] "
-        "전처리 + 모델 학습 시작"
-    )
-
-    fit_start = time.time()
-
-    pipeline.fit(
-        X_train,
-        y_train,
-    )
-
-    fit_seconds = (
-        time.time()
-        - fit_start
-    )
-
-    print(
-        f"[{experiment_name}] "
-        f"학습 완료 | "
-        f"{fit_seconds:.1f} sec"
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 수렴 확인
-    # -------------------------------------------------------------------------
-
-    lr_model = (
-        pipeline
-        .named_steps["model"]
-    )
-
-    n_iter = int(
-        lr_model.n_iter_[0]
-    )
-
-    print(
-        f"[{experiment_name}] "
-        f"Iteration: "
-        f"{n_iter}/{lr_model.max_iter}"
-    )
-
-    if n_iter >= lr_model.max_iter:
-        print(
-            f"[{experiment_name}] "
-            "⚠️ max_iter 도달 → "
-            "완전히 수렴하지 않았을 가능성 있음"
-        )
-    else:
-        print(
-            f"[{experiment_name}] "
-            "✓ max_iter 이전 수렴"
-        )
-
-
-    # -------------------------------------------------------------------------
-    # Validation 예측
-    # -------------------------------------------------------------------------
-
-    print(
-        f"[{experiment_name}] "
-        "Validation 확률 예측 시작"
-    )
-
-    predict_start = time.time()
-
-    valid_prob = (
-        pipeline
-        .predict_proba(X_valid)[:, 1]
-    )
-
-    predict_seconds = (
-        time.time()
-        - predict_start
-    )
-
-    print(
-        f"[{experiment_name}] "
-        f"Validation 예측 완료 | "
-        f"{predict_seconds:.1f} sec"
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 예측 확률 sanity check
-    # -------------------------------------------------------------------------
-
-    print(
-        f"[{experiment_name}] "
-        f"Prediction range: "
-        f"{valid_prob.min():.6f} ~ "
-        f"{valid_prob.max():.6f}"
-    )
-
-    print(
-        f"[{experiment_name}] "
-        f"Mean prediction : "
-        f"{valid_prob.mean():.6f}"
-    )
-
-    print(
-        f"[{experiment_name}] "
-        f"Actual rate     : "
-        f"{y_valid.mean():.6f}"
-    )
-
-
-    # -------------------------------------------------------------------------
-    # Overall 평가
-    # -------------------------------------------------------------------------
-
-    overall_metrics = evaluate_predictions(
-        y_valid,
-        valid_prob,
-    )
-
-
-    # -------------------------------------------------------------------------
-    # Known Pitcher 평가
-    # -------------------------------------------------------------------------
-
-    known_idx = known_mask.to_numpy()
-
-    known_metrics = evaluate_predictions(
-        y_valid.to_numpy()[known_idx],
-        valid_prob[known_idx],
-    )
-
-
-    # -------------------------------------------------------------------------
-    # Unknown Pitcher 평가
-    # -------------------------------------------------------------------------
-
-    unknown_idx = unknown_mask.to_numpy()
-
-    unknown_metrics = evaluate_predictions(
-        y_valid.to_numpy()[unknown_idx],
-        valid_prob[unknown_idx],
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 전체 시간
-    # -------------------------------------------------------------------------
-
-    total_seconds = (
-        time.time()
-        - total_start
-    )
-
-
-    # -------------------------------------------------------------------------
-    # 결과 저장
-    # -------------------------------------------------------------------------
-
-    result = {
-        "model": experiment_name,
-
-        "n_features": len(feature_list),
-        "n_cat": len(cat_cols),
-        "n_num": len(num_cols),
-
-        "pitcher_id": config["use_pitcher_id"],
-        "reduced": config["reduced"],
-
-        "overall_brier": overall_metrics["brier"],
-        "overall_logloss": overall_metrics["logloss"],
-        "overall_auc": overall_metrics["auc"],
-
-        "known_brier": known_metrics["brier"],
-        "known_logloss": known_metrics["logloss"],
-        "known_auc": known_metrics["auc"],
-
-        "unknown_brier": unknown_metrics["brier"],
-        "unknown_logloss": unknown_metrics["logloss"],
-        "unknown_auc": unknown_metrics["auc"],
-
-        "n_iter": n_iter,
-
-        "fit_seconds": fit_seconds,
-        "predict_seconds": predict_seconds,
-        "total_seconds": total_seconds,
-    }
-
-    results.append(
-        result
-    )
-
-    trained_models[
-        experiment_name
-    ] = pipeline
-
-
-    # -------------------------------------------------------------------------
-    # 현재 모델 결과 로그
-    # -------------------------------------------------------------------------
-
-    print("\n" + "-" * 80)
-
-    print(
-        f"{experiment_name} RESULT"
-    )
-
-    print("-" * 80)
-
-    print(
-        f"Overall Brier   : "
-        f"{overall_metrics['brier']:.6f}"
-    )
-
-    print(
-        f"Known Brier     : "
-        f"{known_metrics['brier']:.6f}"
-    )
-
-    print(
-        f"Unknown Brier   : "
-        f"{unknown_metrics['brier']:.6f}"
-    )
-
-    print(
-        f"Overall LogLoss : "
-        f"{overall_metrics['logloss']:.6f}"
-    )
-
-    print(
-        f"Overall AUC     : "
-        f"{overall_metrics['auc']:.6f}"
-    )
-
-    print(
-        f"Fit time        : "
-        f"{fit_seconds:.1f} sec"
-    )
-
-    print(
-        f"Predict time    : "
-        f"{predict_seconds:.1f} sec"
-    )
-
-    print(
-        f"Total time      : "
-        f"{total_seconds:.1f} sec"
-    )
-
-
-# =============================================================================
-# 12. 전체 결과 DataFrame
-# =============================================================================
-
-results_df = (
-    pd.DataFrame(results)
     .sort_values(
-        by="overall_brier",
-        ascending=True,
+        "pitch_count",
+        ascending=False,
+    )
+)
+
+pitcher_count_stats = (
+    pitcher_summary["pitch_count"]
+    .describe(
+        percentiles=[
+            0.10,
+            0.25,
+            0.50,
+            0.75,
+            0.90,
+            0.95,
+            0.99,
+        ]
+    )
+)
+
+n_pitchers = len(pitcher_summary)
+
+top_10pct_n = max(
+    1,
+    int(np.ceil(n_pitchers * 0.10)),
+)
+
+top_10pct_pitch_share = (
+    pitcher_summary
+    .head(top_10pct_n)["pitch_count"]
+    .sum()
+    / pitcher_summary["pitch_count"].sum()
+)
+
+
+print("\n" + "=" * 80)
+print("4. PITCHER DISTRIBUTION")
+print("=" * 80)
+
+print(f"Pitcher count                : {n_pitchers:,}")
+print("\nPitch count statistics:")
+print(pitcher_count_stats.round(2).to_string())
+
+print(
+    f"\nTop 10% pitchers' row share : "
+    f"{top_10pct_pitch_share:.2%}"
+)
+
+pitcher_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "pitcher_summary.csv",
+    ),
+    encoding="utf-8-sig",
+)
+
+
+# Pitch count distribution
+fig, ax = plt.subplots(figsize=(8, 4))
+
+ax.hist(
+    pitcher_summary["pitch_count"],
+    bins=50,
+)
+
+ax.set_title("Pitch Count Distribution by Pitcher")
+ax.set_xlabel("Number of Pitches")
+ax.set_ylabel("Number of Pitchers")
+
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        OUTPUT_DIR,
+        "pitcher_pitch_count_distribution.png",
+    ),
+    dpi=150,
+    bbox_inches="tight",
+)
+plt.show()
+
+
+# =============================================================================
+# 9. Pitcher별 Control Success Rate 분포
+# =============================================================================
+
+print("\n" + "=" * 80)
+print("5. PITCHER CONTROL SUCCESS RATE")
+print("=" * 80)
+
+print(
+    pitcher_summary["success_rate"]
+    .describe(
+        percentiles=[
+            0.10,
+            0.25,
+            0.50,
+            0.75,
+            0.90,
+        ]
+    )
+    .round(4)
+    .to_string()
+)
+
+
+fig, ax = plt.subplots(figsize=(8, 4))
+
+ax.hist(
+    pitcher_summary["success_rate"],
+    bins=30,
+)
+
+ax.set_title("Control Success Rate Distribution by Pitcher")
+ax.set_xlabel("Control Success Rate")
+ax.set_ylabel("Number of Pitchers")
+
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        OUTPUT_DIR,
+        "pitcher_success_rate_distribution.png",
+    ),
+    dpi=150,
+    bbox_inches="tight",
+)
+plt.show()
+
+
+# Pitch count와 success rate 관계
+fig, ax = plt.subplots(figsize=(8, 5))
+
+ax.scatter(
+    pitcher_summary["pitch_count"],
+    pitcher_summary["success_rate"],
+    alpha=0.5,
+)
+
+ax.set_title("Pitch Count vs Control Success Rate")
+ax.set_xlabel("Number of Pitches")
+ax.set_ylabel("Control Success Rate")
+
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        OUTPUT_DIR,
+        "pitcher_count_vs_success_rate.png",
+    ),
+    dpi=150,
+    bbox_inches="tight",
+)
+plt.show()
+
+
+# =============================================================================
+# 10. Numeric Feature 기본 분포
+# =============================================================================
+
+numeric_summary = (
+    train[NUM_COLS]
+    .describe(
+        percentiles=[
+            0.01,
+            0.05,
+            0.25,
+            0.50,
+            0.75,
+            0.95,
+            0.99,
+        ]
+    )
+    .T
+)
+
+numeric_summary["missing_count"] = (
+    train[NUM_COLS]
+    .isna()
+    .sum()
+)
+
+numeric_summary["missing_rate"] = (
+    train[NUM_COLS]
+    .isna()
+    .mean()
+)
+
+numeric_summary["nunique"] = (
+    train[NUM_COLS]
+    .nunique()
+)
+
+
+print("\n" + "=" * 80)
+print("6. NUMERIC FEATURE SUMMARY")
+print("=" * 80)
+
+print(
+    numeric_summary[
+        [
+            "count",
+            "mean",
+            "std",
+            "min",
+            "1%",
+            "50%",
+            "99%",
+            "max",
+            "missing_rate",
+            "nunique",
+        ]
+    ]
+    .round(4)
+    .to_string()
+)
+
+numeric_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "numeric_feature_summary.csv",
+    ),
+    encoding="utf-8-sig",
+)
+
+
+# 주요 numeric feature 전체 분포
+for col in KEY_NUMERIC_COLS:
+
+    if col not in train.columns:
+        continue
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    values = train[col].dropna()
+
+    ax.hist(
+        values,
+        bins=50,
+    )
+
+    ax.set_title(f"Distribution: {col}")
+    ax.set_xlabel(col)
+    ax.set_ylabel("Count")
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            OUTPUT_DIR,
+            f"numeric_distribution_{col}.png",
+        ),
+        dpi=150,
+        bbox_inches="tight",
+    )
+
+    plt.show()
+
+
+# =============================================================================
+# 11. Categorical Feature category 수 확인
+# =============================================================================
+
+categorical_summary = pd.DataFrame(
+    {
+        "nunique": train[CAT_COLS].nunique(dropna=True),
+        "missing_count": train[CAT_COLS].isna().sum(),
+        "missing_rate": train[CAT_COLS].isna().mean(),
+    }
+)
+
+categorical_summary = (
+    categorical_summary
+    .sort_values(
+        "nunique",
+        ascending=False,
+    )
+)
+
+
+print("\n" + "=" * 80)
+print("7. CATEGORICAL FEATURE SUMMARY")
+print("=" * 80)
+
+print(
+    categorical_summary
+    .round(4)
+    .to_string()
+)
+
+categorical_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "categorical_feature_summary.csv",
+    ),
+    encoding="utf-8-sig",
+)
+
+
+# =============================================================================
+# 12. 결측치 비율 확인
+# =============================================================================
+
+missing_summary = pd.DataFrame(
+    {
+        "missing_count": train.isna().sum(),
+        "missing_rate": train.isna().mean(),
+    }
+)
+
+missing_summary = (
+    missing_summary[
+        missing_summary["missing_count"] > 0
+    ]
+    .sort_values(
+        "missing_rate",
+        ascending=False,
+    )
+)
+
+
+print("\n" + "=" * 80)
+print("8. MISSING VALUE SUMMARY")
+print("=" * 80)
+
+if len(missing_summary) == 0:
+    print("결측치가 없습니다.")
+else:
+    print(
+        missing_summary
+        .round(4)
+        .to_string()
+    )
+
+missing_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "missing_value_summary.csv",
+    ),
+    encoding="utf-8-sig",
+)
+
+
+if len(missing_summary) > 0:
+
+    fig, ax = plt.subplots(
+        figsize=(
+            10,
+            max(
+                4,
+                len(missing_summary) * 0.3,
+            ),
+        )
+    )
+
+    plot_missing = (
+        missing_summary["missing_rate"]
+        .sort_values()
+    )
+
+    ax.barh(
+        plot_missing.index,
+        plot_missing.values,
+    )
+
+    ax.set_title("Missing Rate by Feature")
+    ax.set_xlabel("Missing Rate")
+    ax.set_ylabel("Feature")
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            OUTPUT_DIR,
+            "missing_rate.png",
+        ),
+        dpi=150,
+        bbox_inches="tight",
+    )
+
+    plt.show()
+
+
+# =============================================================================
+# 13. 결측 여부 자체가 Target 정보를 포함하는지 확인
+#
+# 각 결측 feature에 대해:
+# - 값이 존재할 때 target rate
+# - 값이 결측일 때 target rate
+# - 두 집단의 target rate 차이
+# =============================================================================
+
+missing_target_rows = []
+
+for col in missing_summary.index:
+
+    missing_mask = train[col].isna()
+    observed_mask = ~missing_mask
+
+    if missing_mask.sum() == 0:
+        continue
+
+    missing_target_rate = (
+        train.loc[
+            missing_mask,
+            TARGET,
+        ]
+        .mean()
+    )
+
+    observed_target_rate = (
+        train.loc[
+            observed_mask,
+            TARGET,
+        ]
+        .mean()
+    )
+
+    missing_target_rows.append(
+        {
+            "feature": col,
+            "missing_count": missing_mask.sum(),
+            "missing_rate": missing_mask.mean(),
+            "target_rate_missing": missing_target_rate,
+            "target_rate_observed": observed_target_rate,
+            "target_rate_diff":
+                missing_target_rate
+                - observed_target_rate,
+        }
+    )
+
+
+missing_target_summary = pd.DataFrame(
+    missing_target_rows
+)
+
+if not missing_target_summary.empty:
+
+    missing_target_summary[
+        "abs_target_rate_diff"
+    ] = (
+        missing_target_summary[
+            "target_rate_diff"
+        ]
+        .abs()
+    )
+
+    missing_target_summary = (
+        missing_target_summary
+        .sort_values(
+            "abs_target_rate_diff",
+            ascending=False,
+        )
+    )
+
+
+print("\n" + "=" * 80)
+print("9. MISSINGNESS VS TARGET")
+print("=" * 80)
+
+if missing_target_summary.empty:
+    print("분석할 결측 feature가 없습니다.")
+else:
+    print(
+        missing_target_summary[
+            [
+                "feature",
+                "missing_rate",
+                "target_rate_missing",
+                "target_rate_observed",
+                "target_rate_diff",
+            ]
+        ]
+        .round(4)
+        .to_string(index=False)
+    )
+
+missing_target_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "missingness_target_summary.csv",
+    ),
+    encoding="utf-8-sig",
+    index=False,
+)
+
+
+# =============================================================================
+# 14. 시즌별 Numeric Feature 분포 확인
+#
+# 시즌별 mean / median / std를 저장한다.
+# =============================================================================
+
+season_numeric_summary = (
+    train
+    .groupby(SEASON_COL)[NUM_COLS]
+    .agg(
+        ["mean", "median", "std"]
+    )
+)
+
+season_numeric_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "season_numeric_summary.csv",
+    ),
+    encoding="utf-8-sig",
+)
+
+
+# =============================================================================
+# 15. 시즌별 Numeric Distribution Shift 후보 탐색
+#
+# 단순 평균 차이보다 이상치 영향이 적은 median을 사용한다.
+#
+# shift_score =
+#   시즌별 median 최대 차이 / 전체 feature IQR
+#
+# 값이 클수록 시즌 간 중심 위치가 크게 달라졌을 가능성이 있다.
+# 이는 통계적 검정이 아니라 EDA용 후보 탐색 지표이다.
+# =============================================================================
+
+shift_rows = []
+
+for col in NUM_COLS:
+
+    if col == SEASON_COL:
+        continue
+
+    values = train[col].dropna()
+
+    if values.nunique() <= 1:
+        continue
+
+    q1 = values.quantile(0.25)
+    q3 = values.quantile(0.75)
+
+    iqr = q3 - q1
+
+    season_medians = (
+        train
+        .groupby(SEASON_COL)[col]
+        .median()
+        .dropna()
+    )
+
+    if len(season_medians) < 2:
+        continue
+
+    median_range = (
+        season_medians.max()
+        - season_medians.min()
+    )
+
+    if iqr > 0:
+        shift_score = median_range / iqr
+    else:
+        shift_score = np.nan
+
+    shift_rows.append(
+        {
+            "feature": col,
+            "overall_q1": q1,
+            "overall_q3": q3,
+            "overall_iqr": iqr,
+            "min_season_median": season_medians.min(),
+            "max_season_median": season_medians.max(),
+            "season_median_range": median_range,
+            "shift_score": shift_score,
+        }
+    )
+
+
+shift_summary = (
+    pd.DataFrame(shift_rows)
+    .sort_values(
+        "shift_score",
+        ascending=False,
+        na_position="last",
     )
     .reset_index(drop=True)
 )
 
 
-DISPLAY_COLS = [
-    "model",
-
-    "n_features",
-    "pitcher_id",
-    "reduced",
-
-    "overall_brier",
-    "known_brier",
-    "unknown_brier",
-
-    "overall_logloss",
-    "overall_auc",
-
-    "n_iter",
-
-    "fit_seconds",
-    "predict_seconds",
-    "total_seconds",
-]
-
-
-print("\n" + "=" * 140)
-print("8. FINAL LOGISTIC REGRESSION RESULTS")
-print("=" * 140)
+print("\n" + "=" * 80)
+print("10. NUMERIC DISTRIBUTION SHIFT CANDIDATES")
+print("=" * 80)
 
 print(
-    results_df[
-        DISPLAY_COLS
-    ]
-    .round(6)
+    shift_summary
+    .head(15)
+    .round(4)
     .to_string(index=False)
 )
 
-
-# =============================================================================
-# 13. Best Model
-# =============================================================================
-
-best_model_name = (
-    results_df
-    .iloc[0]["model"]
+shift_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "numeric_distribution_shift_candidates.csv",
+    ),
+    encoding="utf-8-sig",
+    index=False,
 )
 
-best_brier = (
-    results_df
-    .iloc[0]["overall_brier"]
+
+# =============================================================================
+# 16. 주요 Numeric Feature 시즌별 분포 시각화
+#
+# 각 시즌의 boxplot을 비교한다.
+# =============================================================================
+
+for col in KEY_NUMERIC_COLS:
+
+    if col not in train.columns:
+        continue
+
+    season_values = []
+
+    season_labels = []
+
+    for season in SEASONS:
+
+        values = (
+            train.loc[
+                train[SEASON_COL] == season,
+                col,
+            ]
+            .dropna()
+        )
+
+        if len(values) == 0:
+            continue
+
+        season_values.append(values)
+        season_labels.append(str(season))
+
+
+    if len(season_values) < 2:
+        continue
+
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    ax.boxplot(
+        season_values,
+        labels=season_labels,
+        showfliers=False,
+    )
+
+    ax.set_title(
+        f"{col} Distribution by Season"
+    )
+
+    ax.set_xlabel("Season")
+    ax.set_ylabel(col)
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            OUTPUT_DIR,
+            f"season_distribution_{col}.png",
+        ),
+        dpi=150,
+        bbox_inches="tight",
+    )
+
+    plt.show()
+
+
+# =============================================================================
+# 17. 이상치 후보 탐색
+#
+# IQR Rule:
+# x < Q1 - 1.5 * IQR
+# x > Q3 + 1.5 * IQR
+#
+# binary / 거의 범주형인 numeric 변수는 제외
+# =============================================================================
+
+outlier_rows = []
+
+for col in NUM_COLS:
+
+    if col == SEASON_COL:
+        continue
+
+    values = train[col].dropna()
+
+    # 0/1 indicator 등은 IQR outlier 분석 대상에서 제외
+    if values.nunique() <= 2:
+        continue
+
+    q1 = values.quantile(0.25)
+    q3 = values.quantile(0.75)
+
+    iqr = q3 - q1
+
+    if iqr == 0:
+        continue
+
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    outlier_mask = (
+        (train[col] < lower_bound)
+        | (train[col] > upper_bound)
+    )
+
+    outlier_count = int(
+        outlier_mask.sum()
+    )
+
+    non_missing_count = int(
+        train[col].notna().sum()
+    )
+
+    outlier_rate = (
+        outlier_count / non_missing_count
+        if non_missing_count > 0
+        else np.nan
+    )
+
+    outlier_rows.append(
+        {
+            "feature": col,
+            "q1": q1,
+            "q3": q3,
+            "iqr": iqr,
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+            "outlier_count": outlier_count,
+            "outlier_rate": outlier_rate,
+            "min": values.min(),
+            "max": values.max(),
+        }
+    )
+
+
+outlier_summary = (
+    pd.DataFrame(outlier_rows)
+    .sort_values(
+        "outlier_rate",
+        ascending=False,
+    )
+    .reset_index(drop=True)
 )
 
 
 print("\n" + "=" * 80)
-print("9. BEST MODEL")
+print("11. OUTLIER CANDIDATES")
 print("=" * 80)
 
 print(
-    f"Best model        : {best_model_name}"
-)
-
-print(
-    f"Best Overall Brier: {best_brier:.6f}"
-)
-
-
-# =============================================================================
-# 14. Pitcher ID 효과 비교
-# =============================================================================
-
-score_table = (
-    results_df
-    .set_index("model")
-)
-
-
-pid_comparisons = []
-
-
-for feature_type in [
-    "Full",
-    "Reduced",
-]:
-
-    pid_model = (
-        f"LR-{feature_type}-PID"
-    )
-
-    no_pid_model = (
-        f"LR-{feature_type}-NoPID"
-    )
-
-    pid_comparisons.append(
-        {
-            "comparison":
-                f"{feature_type}: PID - NoPID",
-
-            "overall_brier_diff":
-                score_table.loc[
-                    pid_model,
-                    "overall_brier",
-                ]
-                -
-                score_table.loc[
-                    no_pid_model,
-                    "overall_brier",
-                ],
-
-            "known_brier_diff":
-                score_table.loc[
-                    pid_model,
-                    "known_brier",
-                ]
-                -
-                score_table.loc[
-                    no_pid_model,
-                    "known_brier",
-                ],
-
-            "unknown_brier_diff":
-                score_table.loc[
-                    pid_model,
-                    "unknown_brier",
-                ]
-                -
-                score_table.loc[
-                    no_pid_model,
-                    "unknown_brier",
-                ],
-        }
-    )
-
-
-pid_comparison_df = pd.DataFrame(
-    pid_comparisons
-)
-
-
-print("\n" + "=" * 100)
-print("10. PITCHER ID EFFECT")
-print("=" * 100)
-
-print(
-    pid_comparison_df
-    .round(6)
+    outlier_summary
+    .head(20)
+    .round(4)
     .to_string(index=False)
 )
 
-print(
-    "\nBrier diff < 0 : pitcher_id 포함이 더 좋음"
-)
-print(
-    "Brier diff > 0 : pitcher_id 제외가 더 좋음"
+outlier_summary.to_csv(
+    os.path.join(
+        OUTPUT_DIR,
+        "outlier_candidates.csv",
+    ),
+    encoding="utf-8-sig",
+    index=False,
 )
 
 
 # =============================================================================
-# 15. Full vs Reduced 비교
+# 18. PR 기록용 핵심 요약
 # =============================================================================
 
-reduction_comparisons = []
+season_target_min = (
+    season_summary[
+        "control_success_rate"
+    ]
+    .min()
+)
 
+season_target_max = (
+    season_summary[
+        "control_success_rate"
+    ]
+    .max()
+)
 
-for pid_type in [
-    "PID",
-    "NoPID",
-]:
+season_target_gap = (
+    season_target_max
+    - season_target_min
+)
 
-    full_model = (
-        f"LR-Full-{pid_type}"
-    )
+pitch_count_median = (
+    pitcher_summary["pitch_count"]
+    .median()
+)
 
-    reduced_model = (
-        f"LR-Reduced-{pid_type}"
-    )
+pitch_count_p90 = (
+    pitcher_summary["pitch_count"]
+    .quantile(0.90)
+)
 
-    reduction_comparisons.append(
-        {
-            "comparison":
-                f"{pid_type}: Reduced - Full",
-
-            "overall_brier_diff":
-                score_table.loc[
-                    reduced_model,
-                    "overall_brier",
-                ]
-                -
-                score_table.loc[
-                    full_model,
-                    "overall_brier",
-                ],
-
-            "known_brier_diff":
-                score_table.loc[
-                    reduced_model,
-                    "known_brier",
-                ]
-                -
-                score_table.loc[
-                    full_model,
-                    "known_brier",
-                ],
-
-            "unknown_brier_diff":
-                score_table.loc[
-                    reduced_model,
-                    "unknown_brier",
-                ]
-                -
-                score_table.loc[
-                    full_model,
-                    "unknown_brier",
-                ],
-        }
-    )
-
-
-reduction_comparison_df = pd.DataFrame(
-    reduction_comparisons
+pitch_count_max = (
+    pitcher_summary["pitch_count"]
+    .max()
 )
 
 
-print("\n" + "=" * 100)
-print("11. REDUNDANCY REMOVAL EFFECT")
-print("=" * 100)
+print("\n" + "=" * 80)
+print("12. PR SUMMARY")
+print("=" * 80)
 
+print("\n[시즌별 데이터 수]")
 print(
-    reduction_comparison_df
-    .round(6)
-    .to_string(index=False)
+    season_summary[
+        ["rows"]
+    ]
+    .to_string()
+)
+
+print("\n[시즌별 target rate]")
+print(
+    season_summary[
+        ["control_success_rate"]
+    ]
+    .round(4)
+    .to_string()
 )
 
 print(
-    "\nBrier diff < 0 : Reduced가 더 좋음"
+    f"\nTarget rate max-min gap : "
+    f"{season_target_gap:.4f}"
 )
+
 print(
-    "Brier diff > 0 : Full이 더 좋음"
+    f"Pitcher count           : "
+    f"{n_pitchers:,}"
 )
+
+print(
+    f"Pitch count median      : "
+    f"{pitch_count_median:,.1f}"
+)
+
+print(
+    f"Pitch count p90         : "
+    f"{pitch_count_p90:,.1f}"
+)
+
+print(
+    f"Pitch count max         : "
+    f"{pitch_count_max:,}"
+)
+
+print(
+    f"Top 10% pitcher share   : "
+    f"{top_10pct_pitch_share:.2%}"
+)
+
+
+print("\n[주요 결측 feature]")
+
+if missing_summary.empty:
+    print("없음")
+else:
+    print(
+        missing_summary
+        .head(10)
+        .round(4)
+        .to_string()
+    )
+
+
+print("\n[Distribution shift 후보]")
+
+if shift_summary.empty:
+    print("없음")
+else:
+    print(
+        shift_summary[
+            [
+                "feature",
+                "shift_score",
+            ]
+        ]
+        .head(10)
+        .round(4)
+        .to_string(index=False)
+    )
+
+
+print("\n[결측 여부와 Target 관계 후보]")
+
+if missing_target_summary.empty:
+    print("없음")
+else:
+    print(
+        missing_target_summary[
+            [
+                "feature",
+                "missing_rate",
+                "target_rate_diff",
+            ]
+        ]
+        .head(10)
+        .round(4)
+        .to_string(index=False)
+    )
+
+
+print("\n[이상치 후보]")
+
+if outlier_summary.empty:
+    print("없음")
+else:
+    print(
+        outlier_summary[
+            [
+                "feature",
+                "outlier_count",
+                "outlier_rate",
+            ]
+        ]
+        .head(10)
+        .round(4)
+        .to_string(index=False)
+    )
+
+
+print("\n" + "=" * 80)
+print("EDA COMPLETE")
+print("=" * 80)
+
+print(f"산출물 저장 위치: {OUTPUT_DIR}")
