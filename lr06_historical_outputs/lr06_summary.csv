@@ -1,0 +1,11 @@
+﻿item,value
+official_asof_feature_count,19
+new_pitch_feature_count,10
+new_season_feature_count,2
+new_conditional_feature_count,2
+main_train_chronology_available,False
+main_generation_status,BLOCKED
+test_row_history_generation,FORBIDDEN_FROM_TEST_ROWS
+cold_start_rate_policy,keep_nan
+cold_start_count_policy,zero
+synthetic_leakage_tests,PASS
