@@ -1,0 +1,5 @@
+﻿model,pitcher_id,historical,feature_count,primary_metric,train_seasons,valid_season,description
+LR-A-NoPitcherID,False,False,27,brier,2019-2023,2024,Pitcher ID와 historical feature를 제외한 Unknown-safe baseline
+LR-B-PitcherID,True,False,28,brier,2019-2023,2024,Model A + pitcher_id. Pitcher identity 효과 평가
+LR-C-Historical,False,True,46,brier,2019-2023,2024,Model A + 공식 asof_* historical feature. Identity 없이 history 효과 평가
+LR-D-PitcherID-Historical,True,True,47,brier,2019-2023,2024,Model A + pitcher_id + historical. Identity와 history 동시 사용
