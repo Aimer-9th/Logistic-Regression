@@ -1,0 +1,12 @@
+﻿item,value
+all_feature_count,47
+base_feature_count,27
+historical_feature_count,19
+model_a_feature_count,27
+model_b_feature_count,28
+model_c_feature_count,46
+model_d_feature_count,47
+train_seasons,2019-2023
+valid_season,2024
+primary_metric,brier
+factorial_structure_valid,True
