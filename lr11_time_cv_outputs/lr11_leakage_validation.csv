@@ -1,0 +1,8 @@
+﻿check,result,detail
+temporal_boundary,PASS,max(train season) < valid season for all folds
+preprocessing,PASS,new pipeline per fold; fit on fold train only; valid uses transform/predict only
+preprocessing_state,PASS,imputer/scaler/encoder state unchanged after validation transform
+historical_features,PASS,official asof_* 19 only; not recomputed from fold target
+rolling,PASS,no custom target-based rolling feature is generated in LR-11
+expanding,PASS,no custom target-based expanding feature is generated in LR-11
+validation_target,PASS,validation target is used only for metric calculation

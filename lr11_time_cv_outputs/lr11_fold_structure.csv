@@ -1,0 +1,4 @@
+﻿fold,train_period,valid_season,train_rows,valid_rows,train_pitchers,valid_pitchers,temporal_order_valid
+1,2019~2021,2022,728588,247472,560,390,True
+2,2019~2022,2023,976060,245525,648,382,True
+3,2019~2023,2024,1221585,253507,711,391,True
