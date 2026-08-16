@@ -1,0 +1,5 @@
+﻿comparison,baseline_model,comparison_model,baseline_brier,comparison_brier,brier_improvement,comparison_better
+Pitcher ID effect without history,LR-A-NoPitcherID,LR-B-PitcherID,0.2540624823803619,0.25391698060524664,0.0001455017751152421,True
+Historical effect without pitcher ID,LR-A-NoPitcherID,LR-C-Historical,0.2540624823803619,0.24986328521040793,0.004199197169953955,True
+Pitcher ID effect with history,LR-C-Historical,LR-D-PitcherID-Historical,0.24986328521040793,0.24984287789626966,2.0407314138271015e-05,True
+Historical effect with pitcher ID,LR-B-PitcherID,LR-D-PitcherID-Historical,0.25391698060524664,0.24984287789626966,0.004074102708976984,True

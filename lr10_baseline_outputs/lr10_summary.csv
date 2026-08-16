@@ -1,0 +1,2 @@
+﻿train_seasons,valid_season,train_rows,valid_rows,penalty,C,solver,tol,max_iter,naive_brier,naive_logloss,best_model,best_lr_brier,best_brier_improvement,best_beats_naive
+2019-2023,2024,1221585,253507,l2,1.0,saga,0.001,500,0.2518750479820695,0.6969036062219706,LR-D-PitcherID-Historical,0.24984287789626966,0.0020321700857998393,True
