@@ -1,0 +1,5 @@
+﻿model,feature_count,scale_numeric,no_scale_numeric,categorical,identifier,pipeline_build
+LR-A-NoPitcherID,27,8,10,9,0,PASS
+LR-B-PitcherID,28,8,10,10,1,PASS
+LR-C-Historical,46,27,10,9,0,PASS
+LR-D-PitcherID-Historical,47,27,10,10,1,PASS

@@ -1,0 +1,17 @@
+﻿item,value
+numeric_total,37
+numeric_scaled,27
+numeric_no_scale,10
+categorical,9
+identifier,1
+numeric_imputer,median + missing indicator
+categorical_imputer,constant __MISSING__
+categorical_encoder,OneHotEncoder
+handle_unknown,ignore
+scaled_numeric,StandardScaler
+train_fit_valid_transform,PASS
+unknown_category_test,PASS
+missing_value_test,PASS
+feature_name_extraction,PASS
+full_pipeline_fit,PASS
+sparse_dense_compatible,True
