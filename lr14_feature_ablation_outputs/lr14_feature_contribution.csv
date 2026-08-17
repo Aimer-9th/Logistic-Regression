@@ -1,0 +1,4 @@
+﻿from_model,to_model,added_group,overall_brier_improvement,known_brier_improvement,unknown_brier_improvement
+M0-Mean,M2-Context,Context / static information,0.00023517589479504775,0.0002578160581488409,0.00012097214424278135
+M2-Context,M3-Historical,Official historical features,0.0027392502589768386,0.0026705972597723115,0.0030243050789104386
+M3-Historical,M4-PitcherID,pitcher_id,-2.5584121265964654e-08,-2.1920494447380534e-08,-4.7659917123965556e-08
