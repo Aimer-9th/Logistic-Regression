@@ -1,0 +1,3 @@
+﻿full_model,reduced_model,full_features,reduced_features,overall_brier_improvement,known_brier_improvement,unknown_brier_improvement
+M3-Historical,M3-Historical-Reduced,46,43,-2.621550586334731e-07,-2.418789948610556e-07,-4.590922898228822e-07
+M4-PitcherID,M4-PitcherID-Reduced,47,44,-2.454717688837871e-07,-2.329030797110221e-07,-3.9511823235471866e-07

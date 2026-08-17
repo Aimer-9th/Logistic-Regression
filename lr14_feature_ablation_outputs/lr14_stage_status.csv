@@ -1,0 +1,7 @@
+﻿stage,name,status,reason
+M0,Mean,EXECUTABLE,Fold training target mean
+M1,Pitch Characteristics,NOT_AVAILABLE,Current pitch type/speed/spin/movement are not available as official prediction-time features
+M2,Context,EXECUTABLE,27 official context/static features
+M3,Historical,EXECUTABLE,M2 + 19 official past-only asof_* features
+M4,Pitcher ID,EXECUTABLE,M3 + pitcher_id
+M5,Rolling,BLOCKED,Custom target rolling features were not generated because exact main-data chronology is unavailable
