@@ -1,0 +1,6 @@
+﻿check,result,detail
+known_unknown_partition,PASS,known + unknown = validation rows
+unknown_pitcher_encoder,PASS,Model B/D unseen pitcher_id handled by OneHotEncoder(handle_unknown='ignore')
+historical_cold_start,PASS,official asof_* NaN retained in raw data; pipeline imputation handles Unknown rows
+overall_known_unknown_metric,PASS,Brier / LogLoss / ROC-AUC / PR-AUC evaluated separately
+temporal_boundary,PASS,Known/Unknown membership uses fold train pitcher set only

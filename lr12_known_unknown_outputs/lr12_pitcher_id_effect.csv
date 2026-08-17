@@ -1,0 +1,3 @@
+﻿comparison,baseline_model,pid_model,overall_brier_improvement,known_brier_improvement,unknown_brier_improvement
+PID effect without history,LR-A-NoPitcherID,LR-B-PitcherID,0.0001774252137624055,0.00021295420569689139,5.8366675820265e-07
+PID effect with history,LR-C-Historical,LR-D-PitcherID-Historical,9.04163933998503e-06,1.0071632891545113e-05,5.075404966220498e-06
