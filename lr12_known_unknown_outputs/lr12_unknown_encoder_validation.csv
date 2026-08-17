@@ -1,0 +1,13 @@
+﻿fold,model,uses_pitcher_id,unknown_pitchers,encoder_status,unseen_pitchers_confirmed
+1,LR-A-NoPitcherID,False,88,NOT_APPLICABLE,0
+1,LR-B-PitcherID,True,88,PASS,88
+1,LR-C-Historical,False,88,NOT_APPLICABLE,0
+1,LR-D-PitcherID-Historical,True,88,PASS,88
+2,LR-A-NoPitcherID,False,63,NOT_APPLICABLE,0
+2,LR-B-PitcherID,True,63,PASS,63
+2,LR-C-Historical,False,63,NOT_APPLICABLE,0
+2,LR-D-PitcherID-Historical,True,63,PASS,63
+3,LR-A-NoPitcherID,False,81,NOT_APPLICABLE,0
+3,LR-B-PitcherID,True,81,PASS,81
+3,LR-C-Historical,False,81,NOT_APPLICABLE,0
+3,LR-D-PitcherID-Historical,True,81,PASS,81

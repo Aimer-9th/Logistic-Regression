@@ -1,0 +1,12 @@
+{
+  "model": "LR-C-Historical",
+  "penalty": "l1",
+  "C": 0.001,
+  "l1_ratio": null,
+  "solver": "saga",
+  "mean_brier": 0.24796138514547097,
+  "std_brier": 0.002213351563135233,
+  "known_brier": 0.24810216008912178,
+  "unknown_brier": 0.24731449174293918,
+  "mean_coefficient_sparsity": 0.962250628041558
+}
