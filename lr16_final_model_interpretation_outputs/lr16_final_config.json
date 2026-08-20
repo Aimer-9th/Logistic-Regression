@@ -1,0 +1,30 @@
+{
+  "issue": "LR-16",
+  "feature_set": "M3-Historical-Reduced",
+  "raw_feature_count": 43,
+  "removed_redundant_features": [
+    "run_total_before",
+    "num_runners_on",
+    "asof_pitcher_pitchmix_n"
+  ],
+  "pitcher_id": false,
+  "historical": true,
+  "rolling": false,
+  "penalty": "l1",
+  "C": 0.001,
+  "solver": "saga",
+  "max_iter": 500,
+  "tol": 0.001,
+  "calibration": "Raw",
+  "post_calibration": false,
+  "interpretation_train_period": "2019~2023",
+  "interpretation_train_rows": 1221585,
+  "transformed_feature_count": 839,
+  "nonzero_coefficient_count": 36,
+  "coefficient_sparsity": 0.9570917759237187,
+  "intercept": 2.187613517889986e-06,
+  "converged": true,
+  "n_iter": 30,
+  "fit_seconds": 110.40001084799997,
+  "note": "This model is fitted on 2019~2023 for LR-16 coefficient interpretation only. The final 2019~2024 refit is LR-17."
+}

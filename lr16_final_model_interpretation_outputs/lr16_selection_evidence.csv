@@ -1,0 +1,2 @@
+﻿feature_set,raw_features,mean_overall_brier,std_overall_brier,mean_known_brier,mean_unknown_brier,pitcher_id,historical,rolling,penalty,C,calibration,post_calibration,calibration_reference,leakage_validation,convergence
+M3-Historical-Reduced,43,0.247962,0.002214,0.248102,0.247315,False,True,False,l1,0.001,Raw,False,M3-Historical Full (46 features),PASS,PASS
