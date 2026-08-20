@@ -1,0 +1,2 @@
+﻿feature_set,raw_feature_count,pitcher_id,historical,rolling,penalty,C,solver,max_iter,tol,calibration,train_start,train_end,train_rows,target_rate,transformed_feature_count,coefficient_count,nonzero_coefficient_count,zero_coefficient_count,coefficient_sparsity,n_iter,converged,convergence_warning,warning_message,fit_seconds,pipeline_size_mb
+M3-Historical-Reduced,43,False,True,False,l1,0.001,saga,500,0.001,Raw,2019,2024,1475092,0.5237659752747625,929,929,43,886,0.9537136706135629,12,True,False,,67.91878464499996,0.005741119384765625
